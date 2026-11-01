@@ -10,6 +10,7 @@ import com.music.bitchord.data.model.QueueTier
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.sources.TrackMatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -718,67 +719,77 @@ class PartySync(
      * only the current song would stall at every change while it resolved a
      * stream from cold.
      */
-    private fun load(party: ListenTogether.State) {
+    internal fun load(party: ListenTogether.State) {
         val track = party.playback.track ?: return
         if (loadingVideoId == track.videoId) return
         loadingVideoId = track.videoId
 
         scope.launch {
-            // The queue is only usable if the track is actually in it. It may
-            // not be: the queue and the track are two controls, and between them
-            // the party holds a new running order with the old song still
-            // current. `indexOfFirst(...).coerceAtLeast(0)` turned that
-            // not-found into index 0 and played whatever happened to be first —
-            // a different song entirely, with nothing on screen to explain it.
-            // Falling back to the track alone is always right; falling back to
-            // position zero never is.
-            val partyQueue = party.queue.items
-            val index = partyQueueIndexOf(party.queue, party.playback, track.videoId)
-            val queue = if (index >= 0) partyQueue else listOf(track)
-            val startIndex = if (index >= 0) index else 0
-            // Off the main thread: building an item resolves artwork sizes and
-            // asks [com.music.bitchord.download.Downloads] whether each track is
-            // already on disk, which is a stat per downloaded song. See
-            // [MediaController.playSongs], which moves it for the same reason.
-            val items = withContext(Dispatchers.Default) { queue.map { it.toSong().toMediaItem() } }
-            val exo = player()
-            if (exo == null) {
-                // Nothing was applied, so the next tick has to be free to try
-                // again rather than believing this track is already on its way.
-                loadingVideoId = null
-                return@launch
+            try {
+                // The queue is only usable if the track is actually in it. It may
+                // not be: the queue and the track are two controls, and between them
+                // the party holds a new running order with the old song still
+                // current. `indexOfFirst(...).coerceAtLeast(0)` turned that
+                // not-found into index 0 and played whatever happened to be first —
+                // a different song entirely, with nothing on screen to explain it.
+                // Falling back to the track alone is always right; falling back to
+                // position zero never is.
+                val partyQueue = party.queue.items
+                val index = partyQueueIndexOf(party.queue, party.playback, track.videoId)
+                val queue = if (index >= 0) partyQueue else listOf(track)
+                val startIndex = if (index >= 0) index else 0
+                // Off the main thread: building an item resolves artwork sizes and
+                // asks [com.music.bitchord.download.Downloads] whether each track is
+                // already on disk, which is a stat per downloaded song. See
+                // [MediaController.playSongs], which moves it for the same reason.
+                val items = withContext(Dispatchers.Default) { queue.map { it.toSong().toMediaItem() } }
+                val exo = player()
+                if (exo == null) {
+                    // Nothing was applied, so the next tick has to be free to try
+                    // again rather than believing this track is already on its way.
+                    loadingVideoId = null
+                    return@launch
+                }
+                // Read after the build, not before: assembling a long queue takes
+                // real time, and the party's playhead has moved on by exactly that
+                // much. Taken beforehand, every track change would start this device
+                // a little behind and then be hauled forward by a correcting seek.
+                val startAt = ListenTogether.partyPositionMs() ?: party.playback.positionMs
+                Log.i(
+                    TAG,
+                    "queue: set n=${items.size} at=$startIndex size=${items.size} " +
+                        "videos=${items.count { it.isVideoRow }} " +
+                        "musicOnly=${if (AppSettings.preferMusicOnly.value) "on" else "off"} by=party",
+                )
+                exo.setMediaItems(items, startIndex, startAt)
+                exo.prepare()
+                // Not started here even when the party is playing: the resume may be
+                // scheduled a moment out, and [reconcile] owns that wait. Preparing
+                // now is what makes this device ready to hit that instant.
+                //
+                // Nor started on an unmeasured clock, which is the state a device
+                // joining a playing party is in: [ListenTogether.partyPositionMs]
+                // falls back to the server's reading at the moment it sent the frame
+                // and [ListenTogether.msUntilStart] answers 0, so starting here would
+                // begin at a position nobody has checked. The track is loaded and on
+                // screen either way; the pong is moments out, and the [reconcile]
+                // below starts it the instant the clock lands.
+                if (party.playback.isPlaying &&
+                    party.clockSynced &&
+                    ListenTogether.msUntilStart() <= 0L
+                ) {
+                    exo.play()
+                }
+                reconcile()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                // A track whose metadata or media items could not be built must
+                // not stay marked as loading. Left set, every later reconcile
+                // skips this same id and the party's song never makes a sound.
+                Log.w(TAG, "could not load party track ${track.videoId}: ${failure.message}")
+                if (loadingVideoId == track.videoId) loadingVideoId = null
             }
-            // Read after the build, not before: assembling a long queue takes
-            // real time, and the party's playhead has moved on by exactly that
-            // much. Taken beforehand, every track change would start this device
-            // a little behind and then be hauled forward by a correcting seek.
-            val startAt = ListenTogether.partyPositionMs() ?: party.playback.positionMs
-            Log.i(
-                TAG,
-                "queue: set n=${items.size} at=$startIndex size=${items.size} " +
-                    "videos=${items.count { it.isVideoRow }} " +
-                    "musicOnly=${if (AppSettings.preferMusicOnly.value) "on" else "off"} by=party",
-            )
-            exo.setMediaItems(items, startIndex, startAt)
-            exo.prepare()
-            // Not started here even when the party is playing: the resume may be
-            // scheduled a moment out, and [reconcile] owns that wait. Preparing
-            // now is what makes this device ready to hit that instant.
-            //
-            // Nor started on an unmeasured clock, which is the state a device
-            // joining a playing party is in: [ListenTogether.partyPositionMs]
-            // falls back to the server's reading at the moment it sent the frame
-            // and [ListenTogether.msUntilStart] answers 0, so starting here would
-            // begin at a position nobody has checked. The track is loaded and on
-            // screen either way; the pong is moments out, and the [reconcile]
-            // below starts it the instant the clock lands.
-            if (party.playback.isPlaying &&
-                party.clockSynced &&
-                ListenTogether.msUntilStart() <= 0L
-            ) {
-                exo.play()
-            }
-            reconcile()
         }
     }
 
@@ -1193,6 +1204,9 @@ internal fun Song.toPartyTrack(playerDurationMs: Long): PartyTrack = PartyTrack(
     durationMs = playerDurationMs.takeIf { it > 0L }
         ?: TrackMatcher.secondsOf(durationText)?.let { it * 1000L },
     fromAutoplay = fromAutoplay,
+    isVideo = isVideo,
+    isVideoOrigin = isVideoOrigin,
+    videoRadio = videoRadio,
 )
 
 internal fun PartyTrack.toSong(): Song = Song(
@@ -1200,6 +1214,9 @@ internal fun PartyTrack.toSong(): Song = Song(
     title = title,
     artist = artist,
     thumbnailUrl = thumbnailUrl,
+    isVideo = isVideo,
+    isVideoOrigin = isVideoOrigin,
+    videoRadio = videoRadio,
     // Not cosmetic: this is what a cross-source match is made on, so a device
     // whose sources differ from the sender's needs it to find the same
     // recording. See [Song.matchQuery].

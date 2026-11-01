@@ -32,6 +32,12 @@ data class PartyTrack(
     val durationMs: Long? = null,
     /** Preserves the queue's shared manual/AutoPlay section boundary. */
     val fromAutoplay: Boolean = false,
+    /** A music-video upload rather than the catalogue track. */
+    val isVideo: Boolean = false,
+    /** True for a video upload and for a manually selected catalogue match of one. */
+    val isVideoOrigin: Boolean = isVideo,
+    /** Queued by video radio as a video song, so the upload form must be kept. */
+    val videoRadio: Boolean = false,
 )
 
 /** One signed-in device in the party, as every other device sees it. */

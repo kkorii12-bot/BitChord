@@ -30,12 +30,15 @@ func NewPartyError(status int, code, message string) *PartyError {
 
 // Track represents a song with metadata needed for display and synchronization.
 type Track struct {
-	VideoId      string  `json:"videoId"`
-	Title        string  `json:"title"`
-	Artist       string  `json:"artist"`
-	ThumbnailUrl *string `json:"thumbnailUrl,omitempty"`
-	DurationMs   *int64  `json:"durationMs,omitempty"`
-	FromAutoplay bool    `json:"fromAutoplay"`
+	VideoId       string  `json:"videoId"`
+	Title         string  `json:"title"`
+	Artist        string  `json:"artist"`
+	ThumbnailUrl  *string `json:"thumbnailUrl,omitempty"`
+	DurationMs    *int64  `json:"durationMs,omitempty"`
+	FromAutoplay  bool    `json:"fromAutoplay"`
+	IsVideo       bool    `json:"isVideo"`
+	IsVideoOrigin bool    `json:"isVideoOrigin"`
+	VideoRadio    bool    `json:"videoRadio"`
 }
 
 func TrackFromWire(raw map[string]interface{}) *Track {
@@ -75,14 +78,20 @@ func TrackFromWire(raw map[string]interface{}) *Track {
 	}
 
 	fromAutoplay, _ := raw["fromAutoplay"].(bool)
+	isVideo, _ := raw["isVideo"].(bool)
+	isVideoOrigin, _ := raw["isVideoOrigin"].(bool)
+	videoRadio, _ := raw["videoRadio"].(bool)
 
 	return &Track{
-		VideoId:      vid,
-		Title:        title,
-		Artist:       artist,
-		ThumbnailUrl: thumbPtr,
-		DurationMs:   durPtr,
-		FromAutoplay: fromAutoplay,
+		VideoId:       vid,
+		Title:         title,
+		Artist:        artist,
+		ThumbnailUrl:  thumbPtr,
+		DurationMs:    durPtr,
+		FromAutoplay:  fromAutoplay,
+		IsVideo:       isVideo,
+		IsVideoOrigin: isVideoOrigin,
+		VideoRadio:    videoRadio,
 	}
 }
 
