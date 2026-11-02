@@ -1,0 +1,12 @@
+Goal: when next-song preparation is cancelled (the user skips or picks another song), everything it started must stop at once and free the single decode slot and the network.
+
+Evidence (emulator log 11-02, task/u19-tg): 'next-prep cancelled: GJY8OMJXRAk after 89227ms' at 09:00:02, yet 'decode: video-wav dropped at the gate (caller gave up)' only at 09:00:27 and 'song check: stream 90s 2812KB' still at 09:00:55; same pattern after every cancel ('next-prep cancelled ... after ~100000ms' then 'decode: hq-verify dropped at the gate' 25 s later). A Deepgram request ('LyricsTiming: Deepgram Whisper timing (en, 76s)') for a prepared song ran ~70 s.
+Code: app/.../playback/NextTrackPreparation.kt (job, stepLog, aheadOfTime context element), VideoAudio.kt (decode/decodeSong 'wanted' lambdas, openSongSource, AudioCache.awaitRenditionPrefix up to OPENING_WAIT_MS 120 s), AudioDecoder.kt (DecodePriorityGate acquire/abort), shared/.../data/lyrics/Deepgram.kt (listen - is the HTTP call cancellable?), LyricsTiming.kt.
+
+Do (root cause first, failing test first):
+1. Trace every child task next-prep starts and check each one stops when the job is cancelled: blocking waits (awaitRenditionPrefix, gate acquire, network reads, Deepgram HTTP) that ignore coroutine cancellation, work launched in another scope (GlobalScope/app scope) that outlives the job, abort lambdas checked only before the gate.
+2. Fix each so cancel -> stops within ~1 s (cancellable waits, ensureActive/runInterruptible, calling the HTTP client's cancel, passing the job down). No polling loops/timers.
+3. JVM tests that fail on old code and pass on new. Name exact test classes in the summary (Opus adds them to CI).
+
+Rules: battery first, read every caller and type of what you change, keep all existing guards unless justified; REMOVED-LINES AUDIT required. Do not touch .github/workflows/, keys/, signing. grep/Select-String only (no rg). Unknown Android/Media3/OkHttp API -> context7. AGENTS.md (ponytail) rules apply.
+At the end, summary within 10 lines: files changed / key change / test result / open problems / root cause.
