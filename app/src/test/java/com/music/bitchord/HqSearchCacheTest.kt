@@ -10,6 +10,7 @@ import com.music.bitchord.data.sources.StreamFormat
 import com.music.bitchord.data.sources.StreamRequest
 import com.music.bitchord.data.sources.TrackMatcher
 import com.music.bitchord.playback.HqHostTracker
+import com.music.bitchord.playback.QualityUpgrade
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -224,6 +225,33 @@ class HqSearchCacheTest {
         val outcome = report.outcomes().single()
         assertEquals("the failure must be visible in the hq-search line", "error", outcome.verdict)
         assertFalse(outcome.conclusive)
+    }
+
+    @Test
+    fun `a source that timed out leaves the second look open for a later retry`() = runBlocking {
+        val mediaId = "telegram-cold-session"
+        val pendingTarget = TrackMatcher.Target("Flowers", "Miley Cyrus", durationSec = null)
+        QualityUpgrade.forget(mediaId)
+        QualityUpgrade.pending[mediaId] = QualityUpgrade.Pending(
+            target = pendingTarget,
+            playing = StreamFormat(kbps = 160),
+        )
+        val report = SourceResolver.SearchReport()
+        report.record(
+            SourceResolver.SearchOutcome(verdict = "timeout", conclusive = false),
+            "Telegram",
+        )
+        assertFalse("the walk itself is not conclusive", report.allConclusive)
+
+        // A target with no runtime leaves upgradeFor before it reaches the
+        // registry, so this exercises the verdict, not a live search.
+        QualityUpgrade.lookAgain(mediaId, playingDurationSec = null, report = report)
+
+        assertFalse(
+            "a source that timed out must leave the question open for a later retry",
+            QualityUpgrade.hasAnsweredFor(mediaId),
+        )
+        QualityUpgrade.forget(mediaId)
     }
 
     @Test

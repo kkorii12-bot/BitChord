@@ -585,7 +585,7 @@ object QualityUpgrade {
                 // A copy that opened while a better row failed (a fallback
                 // below the request) is not a verdict either: once the source
                 // is back the better row may open.
-                conclusive = true
+                conclusive = report.allConclusive
                 answered = true
             }
         } finally {

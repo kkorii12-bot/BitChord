@@ -26,6 +26,7 @@ import com.music.bitchord.playback.smart.SyncTestMode
 import com.music.bitchord.playback.smart.VideoAudio
 import com.music.bitchord.ui.player.LyricsTimingUi
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -115,6 +116,16 @@ class LyricsController(
     private var lyricsRaceOrder: List<LyricsSource> = emptyList()
     private var lyricsTimingJob: Job? = null
     private var aiTimingJob: Job? = null
+
+    /**
+     * A timing pass is background analysis (disk, decoder, engines): one that
+     * fails — or finishes its storage work after the screen's scope was
+     * cancelled — must not reach the app's uncaught handler and take playback
+     * down. The failure is logged instead.
+     */
+    private val timingFailureHandler = CoroutineExceptionHandler { _, error ->
+        TrackLog.e("BitChord", "lyrics-timing: background pass failed", error)
+    }
 
     /**
      * The song whose check was started in this playback. It keeps a check that
@@ -853,7 +864,7 @@ class LyricsController(
         }
         val generation = lyricsGeneration
         val context = app
-        lyricsTimingJob = scope.launch {
+        lyricsTimingJob = scope.launch(timingFailureHandler) {
             // Whatever else changes this video's timing — the lock screen, the
             // next-song preparation measuring it first — shows here too.
             launch {
