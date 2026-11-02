@@ -97,7 +97,7 @@ object Downloader {
             position: Long,
             requestedLength: Long,
             reason: String,
-        ): TelegramAudioReader = TelegramAudioReader.open(trackId, position, requestedLength, reason)
+        ): TelegramAudioReader = TelegramAudioReader.openAwaiting(trackId, position, requestedLength, reason)
     }
 
     private fun isTelegram(url: String): Boolean = url.startsWith("${TelegramStreamUri.SCHEME}:")

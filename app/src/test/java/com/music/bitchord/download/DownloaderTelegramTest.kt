@@ -1,12 +1,17 @@
 package com.music.bitchord.download
 
 import com.music.bitchord.telegram.TelegramAudioReader
+import com.music.bitchord.telegram.TelegramClientManager
 import com.music.bitchord.telegram.TelegramFileInfo
 import com.music.bitchord.telegram.TelegramFileTransport
 import com.music.bitchord.telegram.TelegramTrack
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -64,6 +69,29 @@ class DownloaderTelegramTest {
             assertEquals(-1L, opener.requestedLength)
         } finally {
             transport.cleanup()
+        }
+    }
+
+    @Test
+    fun `probe's Telegram readiness wait honours the lookup deadline`() = runBlocking {
+        // A stalled session used to be awaited inside runBlocking, which the
+        // download's deadline cannot cancel; the probe then started a read
+        // after it was already given up on. The default (production) opener is
+        // used here so the test covers that path, not only the fake seam.
+        TelegramClientManager.installSearchTestHooks(awaitReady = { delay(2_000) })
+        try {
+            val started = System.nanoTime()
+            val timedOut = try {
+                withTimeout(150) { Downloader.probe(url, emptyMap()) }
+                false
+            } catch (expected: TimeoutCancellationException) {
+                true
+            }
+            val millis = (System.nanoTime() - started) / 1_000_000
+            assertTrue("probe did not time out", timedOut)
+            assertTrue("probe waited ${millis}ms for a 150ms deadline", millis < 1_000)
+        } finally {
+            TelegramClientManager.installSearchTestHooks()
         }
     }
 

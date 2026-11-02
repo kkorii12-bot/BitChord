@@ -304,6 +304,27 @@ class TelegramAudioReader internal constructor(
             )
         }
 
+        /**
+         * [open] for a caller already inside a cancellable coroutine: awaiting
+         * here means a download's deadline cancels the wait instead of a
+         * runBlocking that cannot be interrupted.
+         */
+        internal suspend fun openAwaiting(
+            trackId: String,
+            requestedPosition: Long,
+            requestedLength: Long,
+            reason: String,
+        ): TelegramAudioReader {
+            TelegramClientManager.awaitReady()
+            return openWithTransport(
+                trackId,
+                requestedPosition,
+                requestedLength,
+                reason,
+                SystemTelegramFileTransport,
+            )
+        }
+
         internal fun openWithTransport(
             trackId: String,
             requestedPosition: Long,
