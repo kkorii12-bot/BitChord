@@ -3,6 +3,7 @@ package com.music.bitchord.data.taste
 import com.music.bitchord.data.StoredSongDisplay
 import com.music.bitchord.data.cover.CoverTitles
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.download.Downloads
 import com.music.bitchord.playback.QueueBuilder
 
 /**
@@ -20,6 +21,7 @@ data class LocalTrack(
     val coverSinger: String? = null,
     val thumbnailUrl: String? = null,
     val durationText: String? = null,
+    val isVideo: Boolean? = null,
 )
 
 /** Everything one AutoPlay top-up has fetched, before any ranking. */
@@ -199,9 +201,9 @@ object TastePool {
 /**
  * A locally stored row as something the player can queue.
  *
- * Not marked a video: the store never kept that flag, and [QueueBuilder] drops
- * every video row when a batch has any catalogue track, so guessing "video"
- * here would quietly remove the listener's own songs from the station.
+ * The store's upload type is used when it has one. An older row written before
+ * the store kept the flag falls back to its download record or an unambiguous
+ * cover title, so a video is not requeued as audio.
  */
 fun LocalTrack.asSong(): Song = StoredSongDisplay.clean(
     Song(
@@ -210,5 +212,8 @@ fun LocalTrack.asSong(): Song = StoredSongDisplay.clean(
         artist = artist,
         thumbnailUrl = thumbnailUrl,
         durationText = durationText,
+        isVideo = isVideo
+            ?: Downloads.savedVideoRowFor(videoId)
+            ?: (CoverTitles.read(title, artist, null, unambiguousOnly = true) != null),
     ),
 )

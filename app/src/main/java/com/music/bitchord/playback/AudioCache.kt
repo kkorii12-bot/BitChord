@@ -9,6 +9,7 @@ import android.os.SystemClock
 import com.music.bitchord.R
 import com.music.bitchord.data.StoredSongDisplay
 import com.music.bitchord.data.TrackLog
+import com.music.bitchord.data.cover.CoverTitles
 import com.music.bitchord.playback.smart.AutomixAnalysisSource
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -808,9 +809,15 @@ object AudioCache {
                     runCatching {
                         val meta = cache.getContentMetadata(key)
                         if (meta.get(META_ORIGIN, null as String?) == null) return@runCatching
-                        if (meta.get(META_TITLE, null as String?) != null &&
-                            meta.get(META_ART, null as String?) != null
-                        ) {
+                        val hasTitle = meta.get(META_TITLE, null as String?) != null
+                        val hasArt = meta.get(META_ART, null as String?) != null
+                        if (hasTitle && hasArt) {
+                            if (song.isVideo == true && meta.get(META_IS_VIDEO, null as String?) == null) {
+                                cache.applyContentMetadataMutations(
+                                    key,
+                                    ContentMetadataMutations().also { it.set(META_IS_VIDEO, "1") },
+                                )
+                            }
                             return@runCatching
                         }
                         cache.applyContentMetadataMutations(
@@ -1019,6 +1026,15 @@ object AudioCache {
             val origin = entries.maxBy { it.bytes }.origin
             val complete = entries.any { it.complete }
             val noted = notedSongs[mediaId]
+            val title = field(META_TITLE) ?: noted?.title?.takeIf(String::isNotBlank) ?: mediaId
+            val artist = field(META_ARTIST) ?: noted?.artist.orEmpty()
+            val taggedVideo = field(META_IS_VIDEO)
+            val legacyVideo = if (noted == null && taggedVideo == null) {
+                Downloads.savedVideoRowFor(mediaId)
+                    ?: CoverTitles.read(title, artist, null, unambiguousOnly = true)?.let { true }
+            } else {
+                null
+            }
             val art = field(META_ART) ?: noted?.thumbnailUrl
                 ?: mediaId.takeIf { SourceRegistry.parseTrackKey(it) == null }
                     ?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
@@ -1026,12 +1042,12 @@ object AudioCache {
                 song = StoredSongDisplay.clean(
                     Song(
                         videoId = mediaId,
-                        title = field(META_TITLE) ?: noted?.title?.takeIf(String::isNotBlank) ?: mediaId,
-                        artist = field(META_ARTIST) ?: noted?.artist.orEmpty(),
+                        title = title,
+                        artist = artist,
                         thumbnailUrl = art,
                         durationText = field(META_DURATION) ?: noted?.durationText,
                         albumName = field(META_ALBUM) ?: noted?.albumName,
-                        isVideo = cachedSongIsVideo(noted?.isVideo, field(META_IS_VIDEO)),
+                        isVideo = cachedSongIsVideo(noted?.isVideo, taggedVideo, legacyVideo),
                         // The row's second line: where the copy came from, what
                         // it costs on disk, and — when only part of it is there —
                         // that it will need a connection to play to the end.
@@ -1306,9 +1322,10 @@ object AudioCache {
         return if (mb >= 1024) "%.1f GB".format(Locale.ROOT, mb / 1024) else "%.1f MB".format(Locale.ROOT, mb)
     }
 
-    /** A cached row is a video when this run knew it or an older one tagged it. */
-    internal fun cachedSongIsVideo(noted: Boolean?, metadata: String?): Boolean =
-        noted == true || metadata == "1"
+    /** A cached row is a video when this run knew it, an older one tagged it, or its legacy record still says so. */
+    internal fun cachedSongIsVideo(noted: Boolean?, metadata: String?, legacy: Boolean? = null): Boolean =
+        noted == true || metadata == "1" ||
+            (noted == null && metadata == null && legacy == true)
 
     private const val META_ORIGIN = "bc_origin"
     private const val META_MEDIA_ID = "bc_media_id"

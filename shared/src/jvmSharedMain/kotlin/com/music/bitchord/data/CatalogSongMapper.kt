@@ -12,6 +12,7 @@ import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.model.toSong
 import com.music.bitchord.data.sources.TrackMatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Semaphore
@@ -313,7 +314,7 @@ internal object CatalogSongMapper {
         sources: Map<String, Song> = emptyMap(),
     ): HomeShelf {
         val indexes = shelf.items.indices
-            .filter { shelf.items[it].videoId != null }
+            .filter { !shelf.items[it].videoId.isNullOrBlank() }
             .take(limit)
         if (indexes.isEmpty()) return shelf
         val songs = indexes.map { index ->
@@ -328,13 +329,7 @@ internal object CatalogSongMapper {
                 title = item.title,
                 artist = item.subtitle,
                 thumbnailUrl = item.thumbnailUrl,
-            ) ?: Song(
-                videoId = videoId,
-                title = item.title,
-                artist = item.subtitle,
-                thumbnailUrl = item.thumbnailUrl,
-                isVideo = item.isVideo,
-            )
+            ) ?: item.toSong()!!
         }
         val mapped = mapPage(songs, budget, songs.size)
         val byIndex = indexes.zip(mapped).toMap()

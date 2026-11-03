@@ -31,13 +31,15 @@ internal object KoListeningStatsDisplay {
     fun asSong(entry: TrackEntry): Song {
         val isVideo = entry.isVideo
             ?: Downloads.savedVideoRowFor(entry.id)
-            ?: entry.artist.endsWith(" 커버")
-            ?: CoverTitles.read(
-                entry.title,
-                entry.artist,
-                entry.artistId,
-                unambiguousOnly = true,
-            ) != null
+            ?: (
+                entry.artist.endsWith(" 커버") ||
+                    CoverTitles.read(
+                        entry.title,
+                        entry.artist,
+                        entry.artistId,
+                        unambiguousOnly = true,
+                    ) != null
+                )
         return StoredSongDisplay.clean(
             Song(
                 videoId = entry.id,

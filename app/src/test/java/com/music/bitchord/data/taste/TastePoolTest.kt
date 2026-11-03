@@ -1,6 +1,7 @@
 package com.music.bitchord.data.taste
 
 import com.music.bitchord.data.model.Song
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -232,5 +233,45 @@ class TastePoolTest {
         // a stored cover must not be marked as one.
         assertFalse(cover.isVideo)
         assertEquals("Jane", local("cover", singer = "Jane").coverSinger)
+    }
+
+    @Test
+    fun `a local video row is rebuilt as a video`() {
+        val video = LocalTrack(
+            videoId = "video",
+            title = "Video",
+            artist = "Artist",
+            isVideo = true,
+        )
+
+        assertTrue(video.asSong().isVideo)
+    }
+
+    @Test
+    fun `a legacy local row with only a cover title is rebuilt as a video`() {
+        val legacy = LocalTrack(
+            videoId = "legacy_cover_title",
+            title = "HUNTR/X (헌트릭스) - Golden /cover by 오화요(허니즈)",
+            artist = "젤리의 노래저장소",
+        )
+
+        assertTrue(legacy.asSong().isVideo)
+    }
+
+    @Test
+    fun `a stored video flag survives serialization`() {
+        val stored = StoredSignals(
+            tracks = listOf(
+                StoredTrack(id = "video", title = "Video", artist = "Artist", isVideo = true),
+            ),
+        )
+        val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        val decoded = json.decodeFromString(
+            StoredSignals.serializer(),
+            json.encodeToString(StoredSignals.serializer(), stored),
+        )
+
+        assertEquals(true, decoded.tracks.single().isVideo)
     }
 }

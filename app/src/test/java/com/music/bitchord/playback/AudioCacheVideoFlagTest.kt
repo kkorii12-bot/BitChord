@@ -18,6 +18,16 @@ class AudioCacheVideoFlagTest {
     }
 
     @Test
+    fun `an untagged row whose download record says video stays a video`() {
+        assertTrue(AudioCache.cachedSongIsVideo(noted = null, metadata = null, legacy = true))
+    }
+
+    @Test
+    fun `an untagged row whose legacy record says audio stays audio`() {
+        assertFalse(AudioCache.cachedSongIsVideo(noted = null, metadata = null, legacy = false))
+    }
+
+    @Test
     fun `an untagged audio row stays audio`() {
         assertFalse(AudioCache.cachedSongIsVideo(noted = false, metadata = null))
     }

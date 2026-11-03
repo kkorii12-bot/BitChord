@@ -2,6 +2,7 @@ package com.music.bitchord.data.stats
 
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -18,6 +19,28 @@ class ListeningStatsVideoRoundTripTest {
         )
 
         assertTrue(entry.asSong().isVideo)
+    }
+
+    @Test
+    fun `a legacy row with only a cover title stays a video`() {
+        val entry = TrackEntry(
+            id = "vid_legacy_cover_title",
+            title = "HUNTR/X (헌트릭스) - Golden /cover by 오화요(허니즈)",
+            artist = "젤리의 노래저장소",
+        )
+
+        assertTrue(entry.asSong().isVideo)
+    }
+
+    @Test
+    fun `a plain row with no cover title stays audio`() {
+        val entry = TrackEntry(
+            id = "vid_plain",
+            title = "Ordinary Song",
+            artist = "Ordinary Artist",
+        )
+
+        assertFalse(entry.asSong().isVideo)
     }
 
     @Test
