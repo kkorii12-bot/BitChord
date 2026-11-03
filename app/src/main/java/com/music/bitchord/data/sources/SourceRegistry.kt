@@ -329,7 +329,10 @@ object SourceRegistry {
         return ceiling.permits(kind)
     }
 
-    fun instance(configId: String): MusicSource? = instances[configId]
+    fun instance(configId: String): MusicSource? {
+        open()
+        return instances[configId]
+    }
 
     fun config(configId: String): SourceConfig? {
         open()
