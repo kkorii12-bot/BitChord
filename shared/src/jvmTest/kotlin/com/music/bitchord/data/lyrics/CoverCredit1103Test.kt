@@ -35,8 +35,8 @@ class CoverCredit1103Test {
             assertEquals("오화요", read.singer, suffix)
 
             val shown = YouTubeDisplayCleaner.clean(song("instagram (cover)", channel))
-            assertEquals("instagram (cover)", shown.title, suffix)
-            assertEquals("오화요", shown.artist, suffix)
+            assertEquals("instagram", shown.title, suffix)
+            assertEquals("오화요 커버", shown.artist, suffix)
         }
     }
 
@@ -51,8 +51,8 @@ class CoverCredit1103Test {
         assertEquals("콩밥특별시 경찰 야유회", read.originalArtist)
 
         val shown = YouTubeDisplayCleaner.clean(song("콩밥특별시 경찰 야유회 - Memories(Smiling Test)", "오화요"))
-        assertEquals("Memories(Smiling Test) (cover)", shown.title)
-        assertEquals("오화요", shown.artist)
+        assertEquals("Memories(Smiling Test)", shown.title)
+        assertEquals("콩밥특별시 경찰 야유회 · 오화요 커버", shown.artist)
         assertEquals("콩밥특별시 경찰 야유회", shown.coverOriginalArtist)
     }
 
@@ -69,8 +69,12 @@ class CoverCredit1103Test {
             assertEquals(title.substringAfter(" / ").removeSuffix(" cover"), read.originalArtist, title)
 
             val shown = YouTubeDisplayCleaner.clean(song(title, "오화요"))
-            assertEquals("Memories(Smiling Test) (cover)", shown.title, title)
-            assertEquals("오화요", shown.artist, title)
+            assertEquals("Memories(Smiling Test)", shown.title, title)
+            assertEquals(
+                title.substringAfter(" / ").removeSuffix(" cover") + " · 오화요 커버",
+                shown.artist,
+                title,
+            )
         }
     }
 
@@ -100,6 +104,56 @@ class CoverCredit1103Test {
         assertEquals("오화요", read.singer)
         assertEquals("윤미래", read.originalArtist)
     }
+
+    @Test
+    fun `a version word on the song side is not the original artist`() {
+        CoverTitles.knownSingers = { setOf("오화요") }
+        val read = assertNotNull(CoverTitles.read(song("Song - Live / 윤미래 cover", "오화요")))
+        assertEquals("Song", read.title)
+        assertEquals("오화요", read.singer)
+        assertEquals("윤미래", read.originalArtist)
+        assertEquals(true, read.orderUnsure)
+
+        val shown = YouTubeDisplayCleaner.clean(song("Song - Live / 윤미래 cover", "오화요"))
+        assertEquals("Song", shown.title)
+        assertEquals("윤미래 · 오화요 커버", shown.artist)
+    }
+
+    @Test
+    fun `the uploader is the artist when the title names the same person twice`() {
+        CoverTitles.knownSingers = { emptySet() }
+        val shown = YouTubeDisplayCleaner.clean(song("Song - 오화요 (오화요 Cover)", "업로더"))
+        assertEquals("Song", shown.title)
+        assertEquals("오화요 · 업로더 커버", shown.artist)
+        assertEquals("오화요", shown.coverOriginalArtist)
+    }
+
+    @Test
+    fun `a bracketed original artist becomes the byline of the original title`() {
+        CoverTitles.knownSingers = { setOf("오화요") }
+        val read = assertNotNull(CoverTitles.read(song("Tomboy((G)I-DLE)", "오화요")))
+        assertEquals("Tomboy", read.title)
+        assertEquals("(G)I-DLE", read.originalArtist)
+        assertEquals("오화요", read.singer)
+
+        val shown = YouTubeDisplayCleaner.clean(song("Tomboy((G)I-DLE)", "오화요"))
+        assertEquals("Tomboy", shown.title)
+        assertEquals("(G)I-DLE · 오화요 커버", shown.artist)
+        assertEquals("오화요", shown.coverSinger)
+        assertEquals("(G)I-DLE", shown.coverOriginalArtist)
+
+        val query = CoverTitles.lyricsQuery(song("Tomboy((G)I-DLE)", "오화요"))
+        assertEquals("Tomboy", query.title)
+        assertEquals("(G)I-DLE", query.artist)
+    }
+
+    @Test
+    fun `a saved bracket cover with the old suffix still reads its original`() {
+        CoverTitles.knownSingers = { setOf("오화요") }
+        val shown = YouTubeDisplayCleaner.clean(song("Tomboy((G)I-DLE) (cover)", "오화요"))
+        assertEquals("Tomboy", shown.title)
+        assertEquals("(G)I-DLE · 오화요 커버", shown.artist)
+    }
 }
 
 /** A cover that was matched to the original's catalogue release still shows its singer. */
@@ -128,8 +182,8 @@ class CatalogueMatchedCoverCreditTest {
 
         val shown = com.music.bitchord.data.StoredSongDisplay.clean(stored)
 
-        assertEquals("Memories(Smiling Test) (cover)", shown.title)
-        assertEquals("오화요", shown.artist)
+        assertEquals("Memories(Smiling Test)", shown.title)
+        assertEquals("오화요 커버", shown.artist)
     }
 
     @Test
@@ -139,7 +193,7 @@ class CatalogueMatchedCoverCreditTest {
 
         val shown = YouTubeDisplayCleaner.cleanUpload(upload)
 
-        assertEquals("instagram (cover)", shown.title)
-        assertEquals("오화요", shown.artist)
+        assertEquals("instagram", shown.title)
+        assertEquals("오화요 커버", shown.artist)
     }
 }

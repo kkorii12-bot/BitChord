@@ -16,9 +16,9 @@ import com.music.bitchord.data.sources.TrackMatcher
  * [com.music.bitchord.data.cover.YouTubeCoverResolver]) is preferred when it
  * exists; this cleaner is the fallback for the rows it cannot confirm.
  *
- * A cover stays in the list because it is music, but reads as
- * `Song (cover)` with the singer (or the uploader when the title names none)
- * as its artist, so a fan upload cannot pass for the original recording.
+ * A cover stays in the list because it is music, but reads as the original
+ * song's title and `원곡자 · 부른사람 커버` as its byline, so a fan upload
+ * cannot pass for the original recording.
  */
 internal object YouTubeDisplayCleaner {
 
@@ -93,19 +93,29 @@ internal object YouTubeDisplayCleaner {
         val uploader = cleanChannel(song.artist).ifBlank { song.artist.trim() }
         // The original's artist is never the cover's artist: when the title
         // named it as the singer, the uploader is who actually sings.
-        val performer = cover.singer.trim()
-            .takeUnless { CoverTitles.sameName(it, cover.originalArtist) }
-            ?.ifBlank { uploader }
-            ?.takeUnless { TrackMatcher.isSoundtrackCredit(it) }
-            .orEmpty()
+        val named = cover.singer.trim()
+        val performer = when {
+            named.isBlank() -> uploader
+            CoverTitles.sameName(named, cover.originalArtist) -> uploader
+            else -> named
+        }.takeUnless { TrackMatcher.isSoundtrackCredit(it) }.orEmpty()
+        val original = cover.originalArtist?.trim()
+            ?.takeIf { it.isNotBlank() && !CoverTitles.sameName(it, performer) }
         return song.copy(
-            title = if (title.endsWith(COVER_SUFFIX, ignoreCase = true)) title else "$title$COVER_SUFFIX",
-            artist = performer,
+            title = title,
+            artist = byline(original, performer),
             originalTitle = song.originalTitle ?: song.title,
             originalArtist = song.originalArtist ?: song.artist,
             coverSinger = song.coverSinger ?: performer.takeIf { it.isNotBlank() },
-            coverOriginalArtist = song.coverOriginalArtist ?: cover.originalArtist,
+            coverOriginalArtist = song.coverOriginalArtist ?: original,
         )
+    }
+
+    /** "원곡자 · 부른사람 커버", or "부른사람 커버" when the title named no original. */
+    private fun byline(originalArtist: String?, singer: String): String = when {
+        singer.isBlank() -> originalArtist.orEmpty()
+        originalArtist.isNullOrBlank() -> "$singer 커버"
+        else -> "$originalArtist · $singer 커버"
     }
 
     /**
@@ -115,12 +125,12 @@ internal object YouTubeDisplayCleaner {
      */
     private fun cleanCoverTitle(song: Song): Song {
         val alreadyMarked = song.title.trim().endsWith(COVER_SUFFIX, ignoreCase = true)
-        // Taking "cover" out of "Song (cover)" left "Song ( )", and every pass
-        // added another pair (phone 11-03: "화조도 花鳥圖 ( ) ( ) ( ) (cover)",
-        // which no lyrics search could find). Empty brackets go too, which
-        // also mends titles saved by that bug.
+        // Old rows were saved as "Song (cover)"; taking the marker out left
+        // "Song ( )" and every pass added another pair (phone 11-03). Empty
+        // brackets go too, which also mends titles saved by that bug.
         val title = song.title.trim()
             .replace(COVER_MARKER, " ")
+            .replace(COVER_SUFFIX_REGEX, " ")
             .replace(EMPTY_BRACKETS, " ")
             .replace(WHITESPACE, " ")
             .trim()
@@ -129,8 +139,8 @@ internal object YouTubeDisplayCleaner {
             .takeUnless { TrackMatcher.isSoundtrackCredit(it) }
             .orEmpty()
         return song.copy(
-            title = if (title.endsWith(COVER_SUFFIX, ignoreCase = true)) title else "$title$COVER_SUFFIX",
-            artist = performer,
+            title = title,
+            artist = byline(null, performer),
             // A second pass sees the already-cleaned title; it must not replace
             // the upload's own title stored on the first pass.
             originalTitle = song.originalTitle ?: song.title.takeUnless { alreadyMarked },
@@ -356,6 +366,9 @@ internal object YouTubeDisplayCleaner {
     )
 
     private const val COVER_SUFFIX = " (cover)"
+
+    /** A saved old-style suffix, removed as a whole so no empty bracket is left. */
+    private val COVER_SUFFIX_REGEX = Regex("""(?i)\s*\(\s*cover\s*\)""")
 
     /** "cover by", a bare cover tag, and the Korean word. */
     private val COVER_MARKER = Regex(

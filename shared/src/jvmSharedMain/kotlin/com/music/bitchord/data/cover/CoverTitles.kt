@@ -176,6 +176,13 @@ object CoverTitles {
         // Before B: a known singer on the right of the dash would read the wrong way round as B.
         readKnown(undated, channel)?.let { return it }
         readDuet(undated, channel)?.let { return it }
+        // "Tomboy((G)I-DLE)" on a cover singer's own upload: the song and the
+        // original's artist in a trailing bracket, no "cover" word anywhere.
+        // The same shape is an ordinary track, so only a known cover singer or
+        // a marked cover channel reads it.
+        if (isKnownChannelSinger(channel) || (channelId != null && channelId in designatedChannels())) {
+            readBracketCredit(undated, channel)?.let { return it }
+        }
         val designated = channelId != null && channelId in designatedChannels()
         if (dated || designated) readB(undated)?.let { return it }
         // "A - 곡(원곡가수)" with no date and no designated channel: the bracket
@@ -647,6 +654,8 @@ object CoverTitles {
         val singer = cleanName(channel) ?: return null
         val split = splitTopLevelDash(head)
         if (split != null) return headCover(head, singer)
+        // The bracket after the song can name the original ("Tomboy((G)I-DLE)").
+        readBracketCredit(head, channel)?.let { return it }
         // "곡명 cover" / "곡명 커버" with no dash. A bare Latin word before the
         // tag is too often part of a real title ("Take Cover"), so that needs
         // another word or a non-Latin script; a bracketed tag is unambiguous.
@@ -680,12 +689,13 @@ object CoverTitles {
                 // On a singer's own upload the name before "Cover" is the
                 // original's artist, not a second singer: the uploader sings it.
                 if (channelName != null && isKnownChannelSinger(channel) && !sameName(singer, channelName)) {
-                    val (titleText, artist) = splitTopLevelDash(song) ?: (song to null)
+                    val (titleText, artistText) = splitTopLevelDash(song) ?: (song to null)
                     val title = cleanTitle(titleText) ?: return null
                     return Cover(
                         title = title,
-                        originalArtist = artist?.let { cleanName(it) } ?: singer,
+                        originalArtist = creditOf(artistText) ?: singer,
                         singer = channelName,
+                        orderUnsure = artistText != null,
                     )
                 }
                 songFirst(song, singer)?.let { return it }
@@ -914,9 +924,51 @@ object CoverTitles {
     private fun songFirst(head: String, singer: String): Cover? {
         val (song, artist) = splitTopLevelDash(head) ?: return songCover(head, singer)
         val title = cleanTitle(song) ?: return null
-        val credit = cleanName(artist)?.takeUnless { isVersionWord(it) || isGenericCredit(it) }
+        val credit = creditOf(artist)
             ?: return Cover(title = title, originalArtist = null, singer = singer)
         return Cover(title = title, originalArtist = credit, singer = singer, orderUnsure = true)
+    }
+
+    /** The original's artist from the right of a dash, unless it only says how it was sung. */
+    private fun creditOf(artist: String?): String? =
+        artist?.let(::cleanName)?.takeUnless { isVersionWord(it) || isGenericCredit(it) }
+
+    /**
+     * A trailing bracket holding the original's artist, nested brackets and
+     * all: "Tomboy((G)I-DLE)". A leading bracket is part of the name itself
+     * ("(G)I-DLE"), not a wrapper.
+     */
+    private val TRAILING_GROUP_DEEP = Regex(
+        """\s*[(\[（【]((?:[^()\[\]（）【】]|[(\[（【][^()\[\]（）【】]*[)\]）】])*)[)\]）】]\s*$""",
+    )
+
+    private fun readBracketCredit(text: String, channel: String): Cover? {
+        val group = TRAILING_GROUP_DEEP.find(text) ?: return null
+        val inner = group.groupValues[1].trim()
+        val titleText = text.removeRange(group.range).trim()
+        if (titleText.isEmpty() || inner.isEmpty()) return null
+        if (isVersionWord(inner) || isDescriptor(inner) || isGenericCredit(inner) || OST.containsMatchIn(inner)) {
+            return null
+        }
+        val title = cleanTitle(titleText) ?: return null
+        if (isTranslation(titleText, inner)) return null
+        val artist = creditName(inner) ?: return null
+        val singer = cleanName(channel) ?: return null
+        if (sameName(artist, singer)) return null
+        return Cover(title = title, originalArtist = artist, singer = singer)
+    }
+
+    /** A name in a credit: trailing alias/agency brackets dropped, a leading "(G)" kept. */
+    private fun creditName(text: String): String? {
+        var name = text.trim()
+        while (true) {
+            val group = TRAILING_GROUP_DEEP.find(name) ?: break
+            if (group.range.first == 0) break
+            name = name.removeRange(group.range).trim()
+        }
+        name = unquote(name.trim(' ', '-', '–', '·', ',', '"', '“', '”'))
+        name = stripUploadSuffix(name)
+        return name.takeIf { it.isNotEmpty() && it.length <= 60 }
     }
 
     private fun songCover(text: String, singer: String): Cover? {
