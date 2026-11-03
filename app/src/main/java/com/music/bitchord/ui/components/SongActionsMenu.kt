@@ -118,9 +118,10 @@ fun SongActionsMenu(
      * bottom sheet with its own track header; [SongActionsPresentation.Menu]
      * is only the rows, compact and in the theme's own colours, for the
      * popup a held row lifts into — see [HeldContextMenu], which draws the
-     * held row itself above them.
+     * held row itself above them. This entry point is the popup; the sheet
+     * has its own [SongActionsSheet].
      */
-    menu: Boolean = false,
+    menu: Boolean = true,
 ) {
     KoSongActionsSheet(
         song = song,

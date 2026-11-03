@@ -1,6 +1,7 @@
 package com.music.bitchord.ui.player
 
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -29,6 +30,32 @@ class PlayerMergeWiringTest {
         val source = source("app/src/main/java/com/music/bitchord/ui/player/CanvasArtworkPlayer.kt")
         assertTrue("a video canvas must be clipped to its loop", "clipStartMs" in source)
         assertTrue("the clipping must reach the player's media item", "setClippingConfiguration(" in source)
+    }
+
+    @Test
+    fun `track menu keeps its rows-only popup presentation`() {
+        val source = source("app/src/main/java/com/music/bitchord/ui/components/SongActionsMenu.kt")
+        val default = Regex("""menu: Boolean = (\w+)""").find(source)?.groupValues?.get(1)
+        assertEquals("the track menu is a popup, not the tinted sheet", "true", default)
+        assertTrue("the menu flag must reach the rows", Regex("""menu = menu""").containsMatchIn(source))
+    }
+
+    @Test
+    fun `low power keeps the artwork mesh behind the player`() {
+        val source = source("sharedUi/src/jvmSharedMain/kotlin/com/music/bitchord/ui/player/NowPlayingScreen.kt")
+        val branch = Regex(
+            """else if \(lowPower && !spotifyCanvasPresentation\) \{[\s\S]*?CanvasAwareArtworkMesh\(""",
+        ).find(source)?.value
+        assertTrue("low power must mount the cheap mesh, not the fallback colour", branch != null)
+    }
+
+    @Test
+    fun `sleeve stats keep the measured stream line`() {
+        val source = source("sharedUi/src/jvmSharedMain/kotlin/com/music/bitchord/ui/player/PlayerControls.kt")
+        val sleeve = Regex("""internal fun SleeveNerdStats\([\s\S]*?\n\}\n""").find(source)?.value
+            ?: error("SleeveNerdStats not found")
+        assertTrue("the sleeve must show the measured stream", "PlayingAudioFormat.forTrack" in sleeve)
+        assertTrue("the measured stream must be drawn", "describe()" in sleeve)
     }
 
     private fun source(relative: String): String {

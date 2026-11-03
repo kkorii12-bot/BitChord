@@ -1635,6 +1635,7 @@ fun NowPlayingScreen(
         } else 0.dp
     // For the mounted clip — see [heroClipMounted].
     val clipBottom = canvasBottom(clipPortrait)
+    val renderedCanvasBottom = canvasBottom(canvasFirstPortrait)
     // Match the old hero's fade height in physical pixels, not its much larger
     // percentage of a portrait video. The mask ends at the real video bottom.
     val clipFadeFraction = if (clipBottom > 0.dp) {
@@ -2536,6 +2537,17 @@ fun NowPlayingScreen(
                         imageUrl = remoteArt,
                         canvasFrame = canvasFrame,
                         trackKey = song.videoId,
+                        modifier = Modifier.graphicsLayer { alpha = 1f - fullArtworkBackdropAlpha },
+                    )
+                } else if (lowPower && !spotifyCanvasPresentation) {
+                    // The blur is skipped in low power, so the artwork-derived mesh
+                    // carries the backdrop instead of leaving the fallback colour.
+                    CanvasAwareArtworkMesh(
+                        imageUrl = remoteArt,
+                        canvasFrame = canvasFrame,
+                        trackKey = song.videoId,
+                        legacyMesh = legacyMesh && !canvasFirstPortrait,
+                        seam = if (canvasFirstPortrait) renderedCanvasBottom else if (heroMode) heroHeight else 0.dp,
                         modifier = Modifier.graphicsLayer { alpha = 1f - fullArtworkBackdropAlpha },
                     )
                 }
