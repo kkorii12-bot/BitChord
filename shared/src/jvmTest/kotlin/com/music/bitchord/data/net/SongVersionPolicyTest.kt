@@ -81,6 +81,19 @@ class SongVersionPolicyTest {
     }
 
     @Test
+    fun `the queue version window covers the five rows after the playing one`() {
+        assertEquals(1..5, SongVersionPolicy.versionLookaheadIndices(currentIndex = 0, itemCount = 10))
+        assertEquals(4..8, SongVersionPolicy.versionLookaheadIndices(currentIndex = 3, itemCount = 10))
+    }
+
+    @Test
+    fun `the queue version window stops at the end and never includes the playing row`() {
+        assertEquals(9..9, SongVersionPolicy.versionLookaheadIndices(currentIndex = 8, itemCount = 10))
+        assertEquals(IntRange.EMPTY, SongVersionPolicy.versionLookaheadIndices(currentIndex = 9, itemCount = 10))
+        assertEquals(IntRange.EMPTY, SongVersionPolicy.versionLookaheadIndices(currentIndex = -1, itemCount = 10))
+    }
+
+    @Test
     fun `a previous track playing is not this row's first sound`() {
         assertFalse(SongVersionPolicy.hasMadeFirstSound("new", "old"))
         assertFalse(SongVersionPolicy.hasMadeFirstSound("new", null))
