@@ -35,6 +35,19 @@ internal object SessionFavoriteState {
         persisted: MediaWidgetSnapshot?,
     ): Boolean = status(videoId, override, persisted) == LikeStatus.LIKE
 
+    /**
+     * Whether the star is filled for a row. A device file follows the offline
+     * liked playlist; everything else follows [status], so a streamed track
+     * keeps the rating published before a process death.
+     */
+    fun liked(
+        videoId: String?,
+        localUri: String?,
+        override: LikeStatus?,
+        persisted: MediaWidgetSnapshot?,
+        offlineLiked: Boolean,
+    ): Boolean = if (localUri != null) offlineLiked else isLiked(videoId, override, persisted)
+
     /** The rating a tap on the star is asking to write. */
     fun toggled(
         videoId: String?,

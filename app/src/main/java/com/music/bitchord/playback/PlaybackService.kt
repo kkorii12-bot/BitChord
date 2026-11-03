@@ -2839,11 +2839,18 @@ class PlaybackService : MediaLibraryService() {
     /** Whether [item] is liked, by whichever of the two records owns it. */
     private fun isLiked(item: MediaItem?): Boolean {
         val song = item?.toSong() ?: return false
-        return if (song.localUri != null) {
-            OfflinePlaylists.isLiked(song)
-        } else {
-            LikeState.overrides.value[song.videoId] == LikeStatus.LIKE
-        }
+        val override = LikeState.overrides.value[song.videoId]
+        return SessionFavoriteState.liked(
+            videoId = song.videoId,
+            localUri = song.localUri,
+            override = override,
+            persisted = if (song.localUri == null && override == null) {
+                MediaWidgetSnapshot.load(this)
+            } else {
+                null
+            },
+            offlineLiked = song.localUri != null && OfflinePlaylists.isLiked(song),
+        )
     }
 
     /**

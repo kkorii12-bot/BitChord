@@ -3,6 +3,8 @@ package com.music.bitchord.playback
 import com.music.bitchord.data.model.LikeStatus
 import com.music.bitchord.widget.MediaWidgetSnapshot
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -77,6 +79,54 @@ class SessionFavoriteStateTest {
                 videoId = "dQw4w9WgXcQ",
                 override = LikeStatus.INDIFFERENT,
                 persisted = likedSnapshot,
+            ),
+        )
+    }
+
+    @Test
+    fun `a streamed track keeps its persisted like in the notification star`() {
+        assertTrue(
+            SessionFavoriteState.liked(
+                videoId = "dQw4w9WgXcQ",
+                localUri = null,
+                override = null,
+                persisted = likedSnapshot,
+                offlineLiked = false,
+            ),
+        )
+    }
+
+    @Test
+    fun `a session override still wins in the notification star`() {
+        assertFalse(
+            SessionFavoriteState.liked(
+                videoId = "dQw4w9WgXcQ",
+                localUri = null,
+                override = LikeStatus.INDIFFERENT,
+                persisted = likedSnapshot,
+                offlineLiked = false,
+            ),
+        )
+    }
+
+    @Test
+    fun `a local file's star follows the offline liked record, not the account snapshot`() {
+        assertTrue(
+            SessionFavoriteState.liked(
+                videoId = "content://media/song",
+                localUri = "content://media/song",
+                override = null,
+                persisted = likedSnapshot,
+                offlineLiked = true,
+            ),
+        )
+        assertFalse(
+            SessionFavoriteState.liked(
+                videoId = "content://media/song",
+                localUri = "content://media/song",
+                override = null,
+                persisted = likedSnapshot,
+                offlineLiked = false,
             ),
         )
     }
