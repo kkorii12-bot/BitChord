@@ -1,0 +1,5 @@
+Kotlin Android app = upstream v1.9 + Korean fork (task/u19-tg; 1.8 fork = origin/task/telegram). Battery first, no polling, never block the main thread. Use grep/Select-String, not rg. Unknown Android/Media3 APIs: context7. Every fix gets a JVM test that fails on current code (no network). Do not touch .github/workflows.
+
+User: 'loading songs is too slow' on 1.9. Using the diagnostics lines (TIMING track selected / resolve / first audio, 'holding … until within 25s', analysis head rounds, read-ahead), find what sits between track selection and first audio in 1.9 that was not in 1.8 (gates, serial waits, extra resolves, the direct-source window, hq-verify) and remove waits that are not needed for the current track. Tests with fakes measuring the order of steps.
+
+Summary of at most 12 lines: cause (file:line), fix, REMOVED-LINES AUDIT, tests (class names for CI), what you did not do. Follow AGENTS.md (ponytail) rules.
