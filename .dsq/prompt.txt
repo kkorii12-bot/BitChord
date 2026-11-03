@@ -1,0 +1,12 @@
+﻿
+
+== 2 李??묒뾽 (?꾩옱 釉뚮옖移?= ?댁쟾 李⑥닔 寃곌낵) ==
+?꾧꺽 湲곗?: ?꾨옒 ?낅┰ 寃?좎옄 吏?곸쓽 HIGH쨌MEDIUM ? ?꾨? 怨좎튌 寃??쒕Ц 寃쎌슦?쇰뒗 ?댁쑀濡?蹂대쪟 湲덉?). 洹몃━怨??댁쟾 李⑥닔媛 docs/review-1031/ 臾몄꽌??'臾몄꽌?먮쭔 ?④?/誘명빐寃?濡???HIGH쨌MEDIUM ???대쾲??怨좎튌 寃????ъ깮 ?듭떖 寃쎈줈(怨??댁꽍쨌?깊겕쨌?щ줈?ㅽ럹?대뱶)?쇰룄 怨좎튂??臾몄꽌 ?대떦 以꾩뿉 '??寃利??꾩슂' ?쒖떆. 吏?곸씠 ??몄쑝硫?肄붾뱶 以?洹쇨굅濡?諛섎컯???붿빟?? ?덈줈 怨좎튇 怨노쭏???섏젙 ???ㅽ뙣?섎뒗 ?뚯뒪?? ?댁쟾 李⑥닔?먯꽌 怨좎튇 寃껋쓣 ?섎룎由ъ? 留?寃?
+寃??吏??
+VERDICT: ISSUES 4
+HIGH app/src/main/java/com/music/bitchord/ko/KoListeningStatsDisplay.kt:34 — `entry.artist.endsWith(" 커버")` is a non-null Boolean, so the Elvis chain stops there and the `CoverTitles.read` title fallback at :35-40 is unreachable; old rows with the cover only in the title still play as plain songs, contradicting the summary. Fix: make the byline test nullable (`takeIf { it }`) or OR it with the title check, and add a legacy title-only test.
+MEDIUM app/src/main/java/com/music/bitchord/playback/AudioCache.kt:1034 — old cache entries without `bc_is_video` become audio when `noted` is absent, and the `noteSongs` backfill at :811 skips entries that already have title/art, so Cached songs still loses pre-change video rows. Fix: fall back to `Downloads.savedVideoRowFor(mediaId)` or `CoverTitles.read(...)` in `cachedSongs`, and let the backfill write the flag.
+MEDIUM app/src/main/java/com/music/bitchord/data/taste/TastePool.kt:206 — `LocalTrack.asSong()` still builds a Song without `isVideo`, so autoplay rows from the local taste store lose it; the task's autoplay/radio path is not addressed and the summary does not list it as not done. Fix: carry `isVideo` through `LocalTrack`/`TasteSignals` (or derive it from the download record/title) and add a round-trip test.
+MEDIUM shared/src/jvmSharedMain/kotlin/com/music/bitchord/data/CatalogSongMapper.kt:331 — the new `ShelfItem.toSong()` helper is bypassed and the same construction duplicated, while the summary claims CatalogSongMapper uses that helper. Fix: use `item.toSong()` in the fallback branch, or correct the summary if the special source row requires the copy.
+Did not run the build/tests; reviewed source only. Risk: legacy cached/autoplay rows and the TV module remain unverified.
+留덉?留??붿빟??吏??踰덊샇蹂?泥섎━(怨좎묠/諛섎컯+洹쇨굅) ??以꾩뵫.
