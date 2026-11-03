@@ -1,12 +1,11 @@
-# Default smoke list: fixed 10-song set (11-02 user: 10 songs, 1.9 only).
-# 3 MV (song-version swap), 2 HQ (upgrade), 5 covers from the sync set.
--RJSbO8UZVY	mv
-QYh6mYIJG2Y	mv
-ekzHIouo8Q4	mv
-TuzfXgUpboA	hq
-cCfPDrRQp9k	hq
-v59g4HRNIkc	cover	PL-ODED49YdZByxxHBLaIIOOePlhj8nWcc
-xK5bBgpt4XA	cover	PL-ODED49YdZByxxHBLaIIOOePlhj8nWcc
-7PgA6kyqVTc	cover	PL-ODED49YdZByxxHBLaIIOOePlhj8nWcc
-vRjfYdwM5L4	cover	PL-ODED49YdZByxxHBLaIIOOePlhj8nWcc
-5nxb792c-b4	cover	PL-ODED49YdZByxxHBLaIIOOePlhj8nWcc
+# user's own 11-03 history, English rock/pop set 2 (sync after per-line pace fix c897e49c0)
+4ujBQOzs6Lw	plain
+8BiLurrzFRw	plain
+qSay_8xzijg	plain
+9RfVp-GhKfs	plain
+0LuignGmX_0	plain
+Efa6BAWPm9o	plain
+D_QLxj8jCF0	plain
+sGgMHiRiklo	plain
+CHk5SWVO4p8	plain
+Jqs5EaAaueA	plain
