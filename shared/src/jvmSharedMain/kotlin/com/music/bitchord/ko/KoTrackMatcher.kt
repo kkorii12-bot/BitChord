@@ -1382,11 +1382,18 @@ internal object KoTrackMatcher {
         if (words.isEmpty()) return
         // A feat. credit belongs to the artist, not the take: "Radio Edit -
         // feat. X" is still the ordinary release, and leaving the credit in
-        // stopped the neutral phrase from being recognised.
-        val identityWords = segment.replace(FEATURING, " ").split(WORD_SPLIT)
+        // stopped the neutral phrase from being recognised. The credit's own
+        // tail is classified separately: a take printed after it ("Album
+        // Version with Live Band") is still a different recording.
+        val feat = FEATURING.find(segment)
+        val identityWords = (feat?.let { segment.substring(0, it.range.first) } ?: segment)
+            .split(WORD_SPLIT)
             .map { it.replace(NON_ALNUM, "") }
             .filter { it.isNotEmpty() }
-        if (identityWords.joinToString("") in NEUTRAL_SEGMENTS) return
+        if (identityWords.joinToString("") in NEUTRAL_SEGMENTS) {
+            if (feat != null) classify(feat.value, versions, context, takeMarkers)
+            return
+        }
         // Text before a named soundtrack label is the work name, not the
         // song's take: "Korean OST Drama" names a Korean-drama soundtrack,
         // while the language of the take can only follow the label

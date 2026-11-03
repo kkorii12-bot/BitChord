@@ -95,6 +95,27 @@ class SongVersionVerdictStoreTest {
     }
 
     @Test
+    fun `the one retry recovers a version after a timed-out lookup`() {
+        val store = SongVersionVerdictStore()
+        // The before-audio waiter spends its whole 1.5 s budget while the
+        // shared search is still running.
+        assertFalse(store.onWaiterCancelled("video", answerCompleted = false))
+        // The search then finishes with a provisional miss: retryable, not a
+        // settled verdict.
+        assertTrue(store.store("video", null, definitive = false))
+        store.recordAnswer("video", null, definitive = false)
+        assertTrue(store.isRetrySuggested("video"))
+        // After the first sound the single retry runs its own search, and this
+        // time the catalogue release is found.
+        store.beginRetry("video")
+        store.beginFreshSearch("video")
+        assertFalse(store.store("video", song("catalogue"), definitive = true))
+        assertEquals("catalogue", store.cached("video")?.videoId)
+        assertFalse(store.isMissing("video"))
+        assertFalse(store.isRetrySuggested("video"))
+    }
+
+    @Test
     fun `an answer landing at the deadline reopens its stored miss`() {
         val store = SongVersionVerdictStore()
         store.store("video", null, definitive = true)

@@ -106,6 +106,22 @@ class TrackMatcherTitleEdgeTest {
     }
 
     @Test
+    fun `a take after a neutral phrase and a featuring credit survives`() {
+        assertEquals(
+            setOf("live"),
+            TrackMatcher.parseTitle("Song (Album Version with Live Band)").versions,
+        )
+        assertEquals(
+            setOf("remix"),
+            TrackMatcher.parseTitle("Song (Radio Edit feat. X Remix)").versions,
+        )
+        assertEquals(
+            setOf("live"),
+            TrackMatcher.parseTitle("Nanana - Album Version with Live Band").versions,
+        )
+    }
+
+    @Test
     fun `nested brackets are unpacked innermost first`() {
         val parts = TrackMatcher.parseTitle("Song (From \"Film (Extended)\")")
         assertEquals("song", parts.core)

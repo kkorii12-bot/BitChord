@@ -14,8 +14,11 @@ import com.music.bitchord.data.model.Song
 object SongVersionPolicy {
     /**
      * How long a queue build or a track transition may hold the first sound
-     * while the song version is resolved. Long enough for one `next` plus one
-     * search on a normal connection, short enough not to feel like a stall.
+     * while the song version is resolved. This is a stall cap, not the
+     * lookup's deadline: the shared lookup keeps running after it, and the one
+     * post-audio retry ([shouldRetrySongVersionAfterAudio]) reads that answer.
+     * An audio-switch search can take longer than this on a slow connection,
+     * which is what the retry is for.
      */
     const val BEFORE_AUDIO_TIMEOUT_MS = 1_500L
 
