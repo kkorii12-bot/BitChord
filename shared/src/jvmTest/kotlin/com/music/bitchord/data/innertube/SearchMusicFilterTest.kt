@@ -21,9 +21,17 @@ class SearchMusicFilterTest {
         subtitle: String,
         width: Int,
         height: Int,
-    ) = """
+        videoType: String? = null,
+    ): String {
+        val typeField = videoType?.let {
+            "\"navigationEndpoint\": { \"watchEndpoint\": { " +
+                "\"watchEndpointMusicSupportedConfigs\": { \"watchEndpointMusicConfig\": { " +
+                "\"musicVideoType\": \"$it\" } } } },"
+        }.orEmpty()
+        return """
         { "musicResponsiveListItemRenderer": {
           "playlistItemData": { "videoId": "$videoId" },
+          $typeField
           "thumbnail": { "musicThumbnailRenderer": { "thumbnail": { "thumbnails": [
             { "url": "https://i.ytimg.com/vi/$videoId/hqdefault.jpg", "width": $width, "height": $height }
           ] } } },
@@ -33,6 +41,7 @@ class SearchMusicFilterTest {
           ]
         } }
     """
+    }
 
     private val response = json(
         """
@@ -65,6 +74,34 @@ class SearchMusicFilterTest {
         assertEquals(
             listOf("TALK0000001"),
             ids(InnertubeParser.parseSearchPage(response, includeVideos = true)),
+        )
+    }
+
+    @Test
+    fun `a square-art video row stays out of the songs page`() {
+        val page = json(
+            """{ "contents": [
+                ${row("SQUAREVID01", "노래", "아티스트 • 3:00", 400, 400, "MUSIC_VIDEO_TYPE_OMV")}
+            ] }""",
+        )
+        assertEquals(emptyList(), ids(InnertubeParser.parseSearchPage(page)))
+        assertEquals(
+            listOf("SQUAREVID01"),
+            ids(InnertubeParser.parseSearchPage(page, includeVideos = true)),
+        )
+    }
+
+    @Test
+    fun `a widescreen catalogue row stays on the songs page`() {
+        val page = json(
+            """{ "contents": [
+                ${row("ATVSONG0001", "노래", "아티스트 • 3:00", 640, 360, "MUSIC_VIDEO_TYPE_ATV")}
+            ] }""",
+        )
+        assertEquals(listOf("ATVSONG0001"), ids(InnertubeParser.parseSearchPage(page)))
+        assertEquals(
+            emptyList(),
+            ids(InnertubeParser.parseSearchPage(page, includeVideos = true)),
         )
     }
 }

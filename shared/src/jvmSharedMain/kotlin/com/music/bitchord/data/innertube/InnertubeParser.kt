@@ -882,12 +882,16 @@ object InnertubeParser {
             // is simply absent, which is what makes "remove from playlist"
             // offer itself exactly where it means something.
             setVideoId = renderer.o("playlistItemData").s("playlistSetVideoId"),
-            // The row type word is the clean signal when present ("All" tab);
-            // otherwise a music-video upload gives itself away with widescreen
-            // art where a catalogue track has square album cover art. Not an
-            // episode, whose art is a widescreen still too: it is listened to,
-            // and a "video" is dropped from the All tab's results.
-            isVideo = !episode && (rowType == "video" || thumbnails.isNotSquare()),
+            // The row's own `musicVideoType` is authoritative where present:
+            // an OMV/UGC row is a video even when its art is square, and an
+            // ATV row is the catalogue song even beside a video upload. The
+            // type word and the art are the fallbacks for responses without
+            // it. Not an episode, whose art is a widescreen still too: it is
+            // listened to, and a "video" is dropped from the All tab's results.
+            isVideo = !episode && when (val videoType = renderer.findString("musicVideoType")) {
+                null -> rowType == "video" || thumbnails.isNotSquare()
+                else -> !videoType.contains("ATV", ignoreCase = true)
+            },
             isEpisode = episode,
             isExplicit = renderer.hasExplicitBadge(),
             // Extract the "Remove from history" feedback token from the row's menu, if present.
