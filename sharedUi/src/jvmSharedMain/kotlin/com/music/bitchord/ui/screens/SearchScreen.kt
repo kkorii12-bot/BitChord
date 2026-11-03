@@ -148,6 +148,8 @@ fun SearchScreen(
      */
     browseCategories: UiState<List<MoodGenreSection>>? = null,
     onBrowseCategoryClick: (MoodGenre) -> Unit = {},
+    /** Resolves a category tile's text-free cover once the tile is visible. */
+    onBrowseCategoryArtwork: ((MoodGenre) -> Unit)? = null,
     suggestions: List<String>,
     typeaheadResults: List<SearchResult>,
     onSubmit: () -> Unit,
@@ -409,6 +411,7 @@ fun SearchScreen(
                                 columns = browseColumns,
                                 onCategoryClick = onBrowseCategoryClick,
                                 onCategoryLongClick = null,
+                                onCategoryArtwork = onBrowseCategoryArtwork,
                             )
                         }
                     } else if (history.isEmpty() && browseCategories !is UiState.Loading) {

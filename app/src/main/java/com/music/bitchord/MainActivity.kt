@@ -3878,6 +3878,7 @@ private fun BitChordApp(
                                 state = exploreState,
                                 listState = exploreListState,
                                 onCategoryClick = viewModel::openMoodGenre,
+                                onCategoryArtwork = viewModel::loadMoodGenreArtwork,
                                 onHideCategory = { AppSettings.hideExploreCategory(it.title) },
                                 onRetry = viewModel::loadExplore,
                                 refreshing = MainViewModel.Feed.EXPLORE in refreshing,
@@ -3999,6 +4000,7 @@ private fun BitChordApp(
                                     selectedTab = TAB_EXPLORE
                                     viewModel.openMoodGenre(category)
                                 },
+                                onBrowseCategoryArtwork = viewModel::loadMoodGenreArtwork,
                                 suggestions = searchSuggestions,
                                 typeaheadResults = viewModel.typeaheadResults.collectAsStateWithLifecycle().value,
                                 onSubmit = viewModel::submitSearch,

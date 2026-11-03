@@ -8,7 +8,9 @@ import com.music.bitchord.data.innertube.Innertube
 import com.music.bitchord.data.model.MoodGenre
 import com.music.bitchord.data.model.MoodGenreSection
 import com.music.bitchord.data.model.UiState
+import com.music.bitchord.data.needsExploreArtwork
 import com.music.bitchord.data.settings.AppSettings
+import com.music.bitchord.data.withExploreArtwork
 import com.music.bitchord.ui.MainViewModel
 import kotlinx.coroutines.launch
 
@@ -41,22 +43,14 @@ internal fun MainViewModel.koPublishExplore() {
  * three-at-a-time budget; a settled cover is persisted for a day.
  */
 internal fun MainViewModel.koLoadMoodGenreArtwork(item: MoodGenre) {
-    if (item.thumbnailUrl != null) return
+    if (!item.needsExploreArtwork()) return
     val key = "${item.browseId}:${item.params.orEmpty()}"
     if (moodGenreArtworkJobs[key]?.isCompleted == false) return
     val job = viewModelScope.launch {
         val artwork = YtMusicRepository.moodGenreArtwork(item.browseId, item.params).getOrNull()
             ?: return@launch
         if (rawExploreSections.isEmpty()) return@launch
-        rawExploreSections = rawExploreSections.map { section ->
-            section.copy(items = section.items.map { currentItem ->
-                if (currentItem.browseId == item.browseId && currentItem.params == item.params) {
-                    currentItem.copy(thumbnailUrl = artwork)
-                } else {
-                    currentItem
-                }
-            })
-        }
+        rawExploreSections = rawExploreSections.withExploreArtwork(item.browseId, item.params, artwork)
         koPublishExplore()
     }
     moodGenreArtworkJobs[key] = job

@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.music.bitchord.data.ExploreCategoryFilter
 import com.music.bitchord.data.ExploreCategoryNames
+import com.music.bitchord.data.needsExploreArtwork
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.MoodGenre
 import com.music.bitchord.data.model.MoodGenreSection
@@ -70,6 +72,8 @@ fun ExploreScreen(
     state: UiState<List<MoodGenreSection>>,
     listState: LazyListState,
     onCategoryClick: (MoodGenre) -> Unit,
+    /** Resolves a tile's text-free cover once that tile is visible. */
+    onCategoryArtwork: (MoodGenre) -> Unit = {},
     onRetry: () -> Unit,
     /**
      * Offers to hide a long-pressed tile. Null keeps the desktop build's grid
@@ -148,6 +152,7 @@ fun ExploreScreen(
                                 row = row,
                                 columns = columns,
                                 onCategoryClick = onCategoryClick,
+                                onCategoryArtwork = onCategoryArtwork,
                                 onCategoryLongClick = onHideCategory?.let {
                                     { item ->
                                         if (!ExploreCategoryFilter.isProtected(item)) pendingHide = item
@@ -199,6 +204,7 @@ internal fun MoodGenreRow(
     columns: Int,
     onCategoryClick: (MoodGenre) -> Unit,
     onCategoryLongClick: ((MoodGenre) -> Unit)?,
+    onCategoryArtwork: ((MoodGenre) -> Unit)? = null,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(MOOD_SPACING),
@@ -211,6 +217,7 @@ internal fun MoodGenreRow(
                 item = item,
                 onClick = { onCategoryClick(item) },
                 onLongClick = onCategoryLongClick?.let { longClick -> { longClick(item) } },
+                onArtworkNeeded = onCategoryArtwork?.let { load -> { load(item) } },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -220,9 +227,10 @@ internal fun MoodGenreRow(
 }
 
 /**
- * A category tile in its own solid colour with one Korean label. The phone
- * tiles never draw the server's cover: those artwork files have English titles
- * painted into them, so overlaying our label put two lines of text on one tile.
+ * A category tile with its cover under one Korean label. The cover is the
+ * first playlist inside the category, not the server's tile art (which has an
+ * English title painted into it), so it is fetched only once this tile is
+ * composed — that is, when the grid has scrolled it into view.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -230,8 +238,12 @@ private fun MoodGenreCard(
     item: MoodGenre,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
+    onArtworkNeeded: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    LaunchedEffect(item.browseId, item.params, item.thumbnailUrl) {
+        if (item.needsExploreArtwork()) onArtworkNeeded?.invoke()
+    }
     MoodGenreSleeve(
         item = item,
         modifier = modifier
@@ -241,15 +253,14 @@ private fun MoodGenreCard(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
-        showArtwork = false,
+        showArtwork = true,
     )
 }
 
 /**
  * A category tile in its own colour with the title at the foot — Apple Music's
- * browse tile. Phone callers pass [showArtwork] = false and get the colour plus
- * a single Korean label; the TV app keeps the photographic sleeve by leaving
- * the default alone.
+ * browse tile. Callers leave [showArtwork] alone to draw the photographic
+ * sleeve; passing false keeps the plain colour behind the label.
  *
  * Only the artwork: the caller sizes, clips and makes it clickable, which is
  * how the TV app wraps the same sleeve in its own focus treatment.
