@@ -39,6 +39,11 @@ internal object KoListeningStatsDisplay {
         )
         // A downloaded cover's cleaned title still says " (cover)" even after
         // its video flag was lost on the way into history.
-        return if (cleaned.isVideo) cleaned else cleaned.copy(isVideo = CoverTitles.isCover(cleaned))
+        return if (cleaned.isVideo) {
+            cleaned
+        } else {
+            val cover = CoverTitles.isCover(cleaned)
+            cleaned.copy(isVideo = cover, isVideoOrigin = cover)
+        }
     }
 }

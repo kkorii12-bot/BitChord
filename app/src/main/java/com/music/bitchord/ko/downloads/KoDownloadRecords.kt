@@ -225,7 +225,9 @@ internal object KoDownloadRecords {
         )
         // An older record may have lost the upload flag before the cover title
         // was kept; the cleaned title still says what it is.
-        return if (row.isVideo) row else row.copy(isVideo = CoverTitles.isCover(row))
+        if (row.isVideo) return row
+        val cover = CoverTitles.isCover(row)
+        return row.copy(isVideo = cover, isVideoOrigin = cover)
     }
 
     /** Whether [videoId]'s recorded file carries the provenance of [hq]. */

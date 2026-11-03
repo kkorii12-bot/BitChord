@@ -1,7 +1,9 @@
 package com.music.bitchord.ko.downloads
 
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.download.Downloads
 import com.music.bitchord.download.SavedSongMetadata
+import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,5 +45,20 @@ class DownloadedCoverTypeTest {
     fun `an older cover record reads as a video row`() {
         assertTrue(record("Marigold (cover)", "오화요").wasVideoRow())
         assertFalse(record("밤편지", "IU").wasVideoRow())
+    }
+
+    @After
+    fun clearSavedRecord() {
+        Downloads.setSavedMetadata(emptyMap())
+    }
+
+    @Test
+    fun `a saved cover row keeps its video origin, not just its video flag`() {
+        val row = record("Marigold (cover)", "오화요")
+        Downloads.setSavedMetadata(mapOf(row.videoId to row))
+
+        val song = checkNotNull(KoDownloadRecords.savedSongFor(row.videoId))
+        assertTrue(song.isVideo)
+        assertTrue(song.isVideoOrigin)
     }
 }

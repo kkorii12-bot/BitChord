@@ -3208,7 +3208,7 @@ object LyricsTiming {
     }
 
     /** What [runSongCheck] made of one lyric sheet; [result] is the song-sync log token. */
-    private class SongCheck(
+    internal class SongCheck(
         val result: String,
         val fitted: Adjustment.Mapped?,
         val heard: List<LyricsWordAlign.Heard>,
@@ -3424,6 +3424,12 @@ object LyricsTiming {
     private val recheckTokens = ConcurrentHashMap<String, String>()
 
     /**
+     * Test seam: the file's own song-check answer, without audio or an engine.
+     * Null in the app, where [runSongCheck] listens to the file.
+     */
+    internal var downloadRecheckAnswerForTest: (suspend (Song, List<LyricLine>, Int) -> SongCheck?)? = null
+
+    /**
      * What the `lyrics-sync:` line says about the stored sync of a downloaded
      * file: whether a sync is kept for these lyrics, and why it is (or was)
      * being re-checked on this play.
@@ -3592,7 +3598,9 @@ object LyricsTiming {
             // The file's own lyrics first: they are what is shown, so an
             // answer fitted to them needs no second interpretation. No audio
             // or a 429 leaves the version unset so the next play may try again.
-            val own = runSongCheck(context, song, lines, key, ENGINE_DEEPGRAM_WHISPER) ?: return@withLock null
+            val own = (downloadRecheckAnswerForTest?.invoke(song, lines, key)
+                ?: runSongCheck(context, song, lines, key, ENGINE_DEEPGRAM_WHISPER))
+                ?: return@withLock null
             var best = own
             var bestFresh: LyricsRepository.Result? = null
             // A fresh sheet is worth a request when the stored answer is

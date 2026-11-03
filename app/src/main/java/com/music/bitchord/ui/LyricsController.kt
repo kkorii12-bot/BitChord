@@ -77,6 +77,10 @@ class LyricsController(
     /** The repository call; a seam for tests, as [LyricsRepository.transcriber] is there. */
     internal var lyricsLookup: LyricsLookup = LyricsRepository::lyrics
 
+    /** The file's embedded lyrics; a seam for tests, like [lyricsLookup]. */
+    internal var embeddedLyrics: suspend (android.content.Context, String) -> EmbeddedLyrics.Embedded? =
+        EmbeddedLyrics::withSource
+
     /**
      * The controller's own backstop on the whole lookup, a beat past the
      * repository's deadline so the repository's best-so-far answer still wins.
@@ -314,6 +318,7 @@ class LyricsController(
             videoId, title, artist, durationMs, album, isVideo, alternatives, artistKnown,
             artistAliases, localUri,
         )
+        downloadRecheckApplies = false
         selectedLyricsSource = null
         fileLyricsLabel = null
         manualLyricsJobs.values.forEach(Job::cancel)
@@ -443,7 +448,7 @@ class LyricsController(
             // recording. The caller has already had the player's length for
             // every track before this job starts.
             if (localUri != null) {
-                EmbeddedLyrics.withSource(app, localUri)?.let { file ->
+                embeddedLyrics(app, localUri)?.let { file ->
                     val embedded = file.lines
                     _lyrics.value = embedded
                     // No source to name: what the file records is the lyrics,
@@ -780,6 +785,13 @@ class LyricsController(
     private var appliedTiming: LyricsTiming.Timing? = null
 
     /**
+     * Whether this play's downloaded file got the one re-check. Kept for the
+     * whole play so the sync line still names why the check ran after a fresh
+     * sheet replaced the file's own lines.
+     */
+    private var downloadRecheckApplies = false
+
+    /**
      * Whether the AI timing action has an engine for this song right now.
      *
      * The audio term is read here, and read again on [AudioCache.renditionCompleted]:
@@ -831,6 +843,7 @@ class LyricsController(
         lyricsTimingJob?.cancel()
         if (cancelAi) aiTimingJob?.cancel()
         timingLines = lines
+        if (downloadRecheck) downloadRecheckApplies = true
         val request = currentLyricsRequest
         // A substituted recording is a different file under the same video id:
         // its clock is not the one any measurement or AI answer for the YouTube
@@ -1270,7 +1283,8 @@ class LyricsController(
             request.videoId,
             lines,
             audioSource,
-            downloaded = request.localUri != null && !request.isVideo,
+            downloaded = request.localUri != null &&
+                (downloadRecheckApplies || !request.isVideo),
             providerUnknown = !request.fileProviderKnown,
         )
         // A song version usually has no base and so no timing at all; its

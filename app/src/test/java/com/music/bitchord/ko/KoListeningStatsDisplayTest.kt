@@ -16,11 +16,13 @@ class KoListeningStatsDisplayTest {
     fun `a saved cover row becomes a video again`() {
         val row = TrackEntry(id = "vRjfYdwM5L4", title = "Marigold (cover)", artist = "오화요")
         assertTrue(KoListeningStatsDisplay.asSong(row).isVideo)
+        assertTrue(KoListeningStatsDisplay.asSong(row).isVideoOrigin)
     }
 
     @Test
     fun `an ordinary history row stays a song`() {
         val row = TrackEntry(id = "IU", title = "밤편지", artist = "IU")
         assertFalse(KoListeningStatsDisplay.asSong(row).isVideo)
+        assertFalse(KoListeningStatsDisplay.asSong(row).isVideoOrigin)
     }
 }
