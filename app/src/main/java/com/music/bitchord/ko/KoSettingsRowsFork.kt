@@ -20,14 +20,12 @@ import com.music.bitchord.ui.screens.SettingsRow
 internal fun KoWifiQualityRow(
     title: String,
     value: String,
-    badge: String? = null,
     onClick: () -> Unit,
 ) {
     SettingsRow(
         icon = SfIcons.Wifi,
         title = title,
         value = value,
-        badge = badge,
         onClick = onClick,
     )
 }
@@ -36,14 +34,12 @@ internal fun KoWifiQualityRow(
 internal fun KoCellularQualityRow(
     title: String,
     value: String,
-    badge: String? = null,
     onClick: () -> Unit,
 ) {
     SettingsRow(
         icon = SfIcons.SignalCellularAlt,
         title = title,
         value = value,
-        badge = badge,
         onClick = onClick,
     )
 }
@@ -140,6 +136,9 @@ internal fun KoAutomixRow(
     SettingsRow(
         icon = SfIcons.AutoAwesome,
         title = title,
+        subtitle = stringResource(
+            if (checked) R.string.automix_enabled_subtitle else R.string.automix_disabled_subtitle,
+        ),
         trailing = {
             Switch(
                 checked = checked,

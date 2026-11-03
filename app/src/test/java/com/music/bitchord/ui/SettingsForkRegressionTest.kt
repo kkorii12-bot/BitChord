@@ -2,6 +2,7 @@ package com.music.bitchord.ui
 
 import com.music.bitchord.TestFiles
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -41,6 +42,39 @@ class SettingsForkRegressionTest {
         assertTrue(
             "the lyrics sources row must read 가사 소스, as it did on 1.8",
             strings.contains("<string name=\"lyrics_sources\">가사 소스</string>"),
+        )
+    }
+
+    @Test
+    fun qualityRowsCarryNoStatusBadge() {
+        val sheet = source("app/src/main/java/com/music/bitchord/ui/screens/SettingsSheet.kt")
+        val rows = source("app/src/main/java/com/music/bitchord/ko/KoSettingsRowsFork.kt")
+            .substringAfter("internal fun KoWifiQualityRow")
+            .substringBefore("internal fun KoDolbyAtmosRow")
+
+        assertFalse(
+            "1.8 dropped the in-use badge: Apple Music has none and it clipped beside a long value",
+            sheet.contains("badge = stringResource(R.string.in_use)"),
+        )
+        assertFalse(
+            "the Wi-Fi/cellular rows must not take a badge again",
+            rows.contains("badge"),
+        )
+    }
+
+    @Test
+    fun automixRowKeepsTheV19Explanation() {
+        val block = source("app/src/main/java/com/music/bitchord/ko/KoSettingsRowsFork.kt")
+            .substringAfter("internal fun KoAutomixRow")
+            .substringBefore("internal fun KoPreferMusicOnlyRow")
+
+        assertTrue(
+            "the v1.9 Automix row explains the on state",
+            block.contains("R.string.automix_enabled_subtitle"),
+        )
+        assertTrue(
+            "the v1.9 Automix row explains the off state",
+            block.contains("R.string.automix_disabled_subtitle"),
         )
     }
 

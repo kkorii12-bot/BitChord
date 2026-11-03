@@ -250,7 +250,6 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
 
-    val metered by AppSettings.meteredConnection.collectAsStateWithLifecycle()
     val wifiQuality by AppSettings.audioQualityWifi.collectAsStateWithLifecycle()
     val cellularQuality by AppSettings.audioQualityCellular.collectAsStateWithLifecycle()
     val crossfade by AppSettings.crossfadeSeconds.collectAsStateWithLifecycle()
@@ -574,21 +573,13 @@ fun SettingsScreen(
                 }
                 val onWifiTitle = stringResource(R.string.on_wifi)
                 row(onWifiTitle, "wi-fi", "streaming quality") {
-                    KoWifiQualityRow(
-                            onWifiTitle,
-                            wifiQuality.localizedLabel(),
-                            badge = stringResource(R.string.in_use).takeIf { metered == false },
-                        ) { // [KO] wifi-quality
+                    KoWifiQualityRow(onWifiTitle, wifiQuality.localizedLabel()) { // [KO] wifi-quality
                         onOpenChoice(SettingsChoiceKind.AUDIO_QUALITY_WIFI)
                     }
                 }
                 val onMobileDataTitle = stringResource(R.string.on_mobile_data)
                 row(onMobileDataTitle, "cellular", "streaming quality") {
-                    KoCellularQualityRow(
-                            onMobileDataTitle,
-                            cellularQuality.localizedLabel(),
-                            badge = stringResource(R.string.in_use).takeIf { metered == true },
-                        ) { // [KO] cellular-quality
+                    KoCellularQualityRow(onMobileDataTitle, cellularQuality.localizedLabel()) { // [KO] cellular-quality
                         onOpenChoice(SettingsChoiceKind.AUDIO_QUALITY_CELLULAR)
                     }
                 }
